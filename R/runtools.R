@@ -77,8 +77,7 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
     {
     obs <-
       obs %>%
-      mutate(daysto_anth = as.integer(as.Date(ZC65_Anthesis) - as.Date(`Sowing date`))) %>%
-      mutate_at(.vars = c("Management"), as.factor)
+      mutate(daysto_anth = as.integer(as.Date(ZC65_Anthesis) - as.Date(`Sowing date`)))
   }
 
   r <-
@@ -140,7 +139,7 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
                  skip = 9,
                  fill = T,
                  blank.lines.skip = T,
-                 stringsAsFactors = T,
+                 stringsAsFactors = F,
                  fileEncoding = "UCS-2LE") %>%
       rename_(.dots = parameters_dictionary)
 
@@ -150,9 +149,11 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
 
     o <-
       obs.data %>%
-      filter(Management %in% sim$manag) %>%
-      filter(Variety %in% sim$variety) %>%
+      filter((Management %in% sim$manag) & (Variety %in% sim$variety)) %>%
       pull(observations)
+
+    if(length(s) != length(o))
+      stop("Not all the simulated conditions are present in the supplied observation files.")
 
     error <- o - s
 
