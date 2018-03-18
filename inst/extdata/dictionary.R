@@ -1,0 +1,12 @@
+parameters_dictionary <- list(manag = "Management",
+                              variety = "Varietal.parameters",
+                              sow_date = "Sowing.date..ZC00.",
+                              anth_date = "Anthesis.date..ZC65.",
+                              daysto_anth = "Anthesis.day.after.sowing..ZC65.",
+                              endfill_date = "End.of.grain.filling..ZC91.",
+                              matur_date = "Maturity.date..ZC92.",
+                              cropdm_mat = "Crop.DM.at.maturity..kgDM.ha.",
+                              graindm_mat = "Grain.DM.at.maturity..kgDM.ha.",
+                              tsw = "Single.grain.DM.at.maturity..mgDM.grain.",
+                              # grain_num = "Grain.number..grain.m..",
+                              harvind = "DM.harvest.index..dimensionless.")

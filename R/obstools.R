@@ -1,7 +1,8 @@
+#' @export
 getObservations <- function(file, type = NULL) {
   if (type == "sqmat") {
     obs <-
-    read_delim(file,
+    readr::read_delim(file,
                delim = "\t",
                skip = 1) %>%
     slice(-1) %>%

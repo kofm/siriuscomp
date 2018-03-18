@@ -95,7 +95,10 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
   res <- bind_cols(res,as_data_frame(r$pareto.optimal))
   colnames(res) <- c(parameters, "RMSE", "Optimal")
 
-  print(res)
+  res %>%
+    filter(Optimal == T) %>%
+    print()
+
   return(res)
 }
 
