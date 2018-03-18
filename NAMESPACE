@@ -2,6 +2,7 @@
 
 export(runSQ)
 export(sqOptimiseVar)
+export(sqchangeParam)
 export(sqeditParam)
 export(sqgetRunItems)
 export(sqgetRunManag)

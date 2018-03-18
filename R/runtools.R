@@ -68,7 +68,7 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
     tools::file_path_as_absolute()
 
   obs <-
-    read_delim("E:/SQ_Projects/SQ_phdtrial/6-Observations/vcu.sqmat.txt",
+    read_delim(obs.file,
                delim = "\t",
                skip = 1) %>%
     slice(-1)
