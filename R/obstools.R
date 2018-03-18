@@ -1,12 +1,20 @@
+#' @importFrom magrittr "%>%"
 #' @export
 getObservations <- function(file, type = NULL) {
+  # Lines to skip before the one starting with the word "Management"
+  skip.lines <- which(startsWith(x = readLines(file, n = 30), prefix = "Management")) - 1
+
   if (type == "sqmat") {
     obs <-
-    readr::read_delim(file,
-               delim = "\t",
-               skip = 1) %>%
-    slice(-1) %>%
-    mutate(daysto_anth = as.integer(as.Date(ZC65_Anthesis) - as.Date(`Sowing date`)))
+    read.table(file,
+               sep = "\t",
+               header = T,
+               skip = skip.lines,
+               stringsAsFactors = F) %>%
+      dplyr::slice(-1) %>%
+      dplyr::select(-dplyr::ends_with(".1")) %>%
+      rename_(.dots = parameters_dictionary[which(parameters_dictionary %in% colnames(.))])
+    # dplyr::mutate(daysto_anth = as.integer(as.Date(ZC65_Anthesis) - as.Date(`Sowing date`)))
   }
   return(obs)
 }
