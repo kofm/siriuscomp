@@ -13,7 +13,6 @@ parameters_dictionary <-
   harvind = "DM.harvest.index",
   harvind = "DM.harvest.index..dimensionless.",
   manag = "Management",
-  manag = "Management",
   maturity = "Maturity.date..ZC92.",
   maturity = "ZC92_Maturity",
   shoots = "Maturity.shoot.number",

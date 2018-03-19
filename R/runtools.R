@@ -67,18 +67,7 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
     gsub('\\\\', '/', .) %>%
     tools::file_path_as_absolute()
 
-  obs <-
-    read_delim(obs.file,
-               delim = "\t",
-               skip = 1) %>%
-    slice(-1)
-
-  if (observations == "daysto_anth")
-    {
-    obs <-
-      obs %>%
-      mutate(daysto_anth = as.integer(as.Date(ZC65_Anthesis) - as.Date(`Sowing date`)))
-  }
+  obs <- getObservations(obs.file, type = "sqmat")
 
   r <-
     mco::nsga2(fn = sqrunOpt,
@@ -136,15 +125,7 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
 
     # Get simulation results
     sim <-
-      read.table(out.file,
-                 sep = "\t",
-                 header = T,
-                 skip = 9,
-                 fill = T,
-                 blank.lines.skip = T,
-                 stringsAsFactors = F,
-                 fileEncoding = "UCS-2LE") %>%
-      rename_(.dots = parameters_dictionary)
+      getSimulation(out.file)
 
     s <-
       sim %>%
@@ -152,8 +133,9 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
 
     o <-
       obs.data %>%
-      filter((Management %in% sim$manag) & (Variety %in% sim$variety)) %>%
-      pull(observations)
+      filter((manag %in% sim$manag) & (variety %in% sim$variety)) %>%
+      pull(observations) %>%
+      as.numeric()
 
     if(length(s) != length(o))
       stop("Not all the simulated conditions are present in the supplied observation files.")

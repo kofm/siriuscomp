@@ -58,7 +58,7 @@ sqgetRunManag <- function(sqrun, runitem) {
 sqchangeParam <- function(file, varspecie, parameter, value) {
   node <- xmlInternalTreeParse(file)
   sqeditParam(node, varspecie = varspecie, parameter = parameter, value = value)
-  saveXML(node, sqpar)
+  saveXML(node, file)
 }
 
 

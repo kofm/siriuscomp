@@ -13,8 +13,8 @@ getObservations <- function(file, type = NULL) {
                stringsAsFactors = F) %>%
       dplyr::slice(-1) %>%
       dplyr::select(-dplyr::ends_with(".1")) %>%
-      rename_(.dots = parameters_dictionary[which(parameters_dictionary %in% colnames(.))])
-    # dplyr::mutate(daysto_anth = as.integer(as.Date(ZC65_Anthesis) - as.Date(`Sowing date`)))
+      sqtranslate_colnames() %>%
+      dplyr::mutate(daysto_anth = as.integer(as.Date(anthesis) - as.Date(sow)))
   }
   return(obs)
 }
