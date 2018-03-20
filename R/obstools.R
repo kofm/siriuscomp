@@ -5,7 +5,6 @@ getObservations <- function(file, type = NULL) {
   skip.lines <- which(startsWith(x = readLines(file, n = 30), prefix = "Management")) - 1
 
   if (type == "sqmat") {
-
     obs <-
     sqobs_importer(file) %>%
       dplyr::mutate(daysto_anth = as.integer(as.Date(anthesis) - as.Date(sow)))

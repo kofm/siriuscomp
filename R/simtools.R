@@ -11,7 +11,8 @@ getSimulation <- function(path, type) {
                blank.lines.skip = T,
                stringsAsFactors = F,
                fileEncoding = "UCS-2LE") %>%
-      sqtranslate_colnames()
+      sqtranslate_colnames() %>%
+      dplyr::mutate(daysto_anth = as.numeric(as.Date(anthesis) - as.Date(sow)))
 
     return(sum)
 
@@ -25,15 +26,15 @@ getSimulation <- function(path, type) {
       filename <- gsub(".sqsro","",file)
 
       dat <-
-        read.table(paste0(path,file),
-                   sep = "\t",
-                   fileEncoding = "utf-16le",
-                   skip = 6,
-                   header = T,
-                   stringsAsFactors = F) %>%
-        dplyr::mutate(Management = rep(substring(file,1,5),nrow(.)),
-                      Variety = rep(substring(filename,nchar(filename) - 3 + 1),nrow(.))) %>%
-        sqtranslate_colnames()
+          read.table(paste0(path,"/",file),
+                     sep = "\t",
+                     fileEncoding = "utf-16",
+                     skip = 6,
+                     header = T,
+                     stringsAsFactors = F) %>%
+          dplyr::mutate(Management = rep(substring(file,1,5),nrow(.)),
+                        Variety = rep(substring(filename,nchar(filename) - 3 + 1),nrow(.))) %>%
+          sqtranslate_colnames()
 
       if (first_file) {
         dailyout <- dat

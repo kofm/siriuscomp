@@ -55,21 +55,16 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
   # Save all in temoprary Project file
   saveXML(sqpro.tree, file = paste0(proj.wd,"/","tmp.sqpro"))
 
+  if (observations %in% c("daysto_anth", "fln")) type <- "sqmat"
+  else if (observations %in% c("eln")) type <- "sqoln"
+  else stop("Usupported observation")
+
   obs.file <-
-    xmlInternalTreeParse("tmp.sqpro") %>%
-    xpathApply(., "//ObservationFileName[text()]", xmlValue) %>%
-    .[[1]] %>%
-    gsub('\\\\', '/', .) %>%
-    tools::file_path_as_absolute() %>%
-    xmlInternalTreeParse() %>%
-    xpathApply(., paste0("//ObservationItem[@name='", runitem,"']/PhenologyObservationFile"), xmlValue) %>%
-    .[[1]] %>%
-    gsub('\\\\', '/', .) %>%
-    tools::file_path_as_absolute()
+    sqgetObsFile("tmp.sqpro", runitem, type)
 
-  if (observations %in% c("daysto_anth")) type <- "sqmat" else stop("Invalid observation")
+  obs <- getObservations(obs.file, type)
 
-  obs <- getObservations(obs.file, type = type)
+  if (!observations %in% colnames(obs)) stop(paste0("Observations not present in file: ", observations))
 
   r <-
     mco::nsga2(fn = sqrunOpt,
@@ -126,23 +121,17 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
     runSQ(sqconsole, paste0(proj.wd, "/tmp.sqpro"))
 
     # Get simulation results
-    sim <-
-      getSimulation(out.file)
+    if (observations %in% c("daysto_anth", "fln")) sim <- getSimulation(out.file, type = "sum")
+    else if (observations %in% c("eln")) sim <- getSimulation(dirname(out.file), type = "daily")
+    else stop("Unsupported observation")
 
-    s <-
+    r <-
       sim %>%
-      pull(observations)
+      dplyr::left_join(obs.data, by = c("manag", "variety")) %>%
+      dplyr::select(dplyr::starts_with(observations)) %>%
+      dplyr::mutate_all(as.numeric)
 
-    o <-
-      obs.data %>%
-      filter((manag %in% sim$manag) & (variety %in% sim$variety)) %>%
-      pull(observations) %>%
-      as.numeric()
-
-    if (length(s) != length(o))
-      stop("Not all the simulated conditions are present in the supplied observation files.")
-
-    error <- o - s
+    error <- r[,1] - r[,2]
 
     fitness <- sqrt(mean(error^2))
 
@@ -154,6 +143,6 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
 #' @export
 runSQ <- function(sqconsole, project) {
   system2(command = sqconsole,
-          args = project,
+          args = paste(project, "/OutputSingleRun"),
           wait = T)
 }

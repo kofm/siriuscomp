@@ -61,4 +61,25 @@ sqchangeParam <- function(file, varspecie, parameter, value) {
   saveXML(node, file)
 }
 
+#' @export
+sqgetObsFile <- function(sqpro, runitem, type) {
+
+  if (type == "sqmat") xml.tag <- "PhenologyObservationFile"
+  else if (type == "sqoln") xml.tag <- "HaunIndexObservationFile"
+
+  obs.file <-
+    xmlInternalTreeParse(sqpro) %>%
+    xpathApply(., "//ObservationFileName[text()]", xmlValue) %>%
+    .[[1]] %>%
+    gsub('\\\\', '/', .) %>%
+    tools::file_path_as_absolute() %>%
+    xmlInternalTreeParse() %>%
+    xpathApply(., paste0("//ObservationItem[@name='", runitem,"']/",xml.tag), xmlValue) %>%
+    .[[1]] %>%
+    gsub('\\\\', '/', .) %>%
+    tools::file_path_as_absolute()
+
+  return(obs.file)
+}
+
 
