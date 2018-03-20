@@ -67,7 +67,9 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
     gsub('\\\\', '/', .) %>%
     tools::file_path_as_absolute()
 
-  obs <- getObservations(obs.file, type = "sqmat")
+  if (observations %in% c("daysto_anth")) type <- "sqmat" else stop("Invalid observation")
+
+  obs <- getObservations(obs.file, type = type)
 
   r <-
     mco::nsga2(fn = sqrunOpt,
@@ -137,7 +139,7 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
       pull(observations) %>%
       as.numeric()
 
-    if(length(s) != length(o))
+    if (length(s) != length(o))
       stop("Not all the simulated conditions are present in the supplied observation files.")
 
     error <- o - s

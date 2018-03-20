@@ -8,6 +8,9 @@ sqtranslate_colnames <- function(df) {
     cropdm_mat = "Maturity.crop.dry.mass",
     cropdm_mat = "Crop.DM.at.maturity..kgDM.ha.",
     daysto_anth = "Anthesis.day.after.sowing..ZC65.",
+    doy = "Day.of.year",
+    eln = "Emerged.leaf.number..leaf.mainstem.",
+    eln = "Emerged.leaf.number",
     emergence = "ZC10_Emergence",
     endfill_date = "End.of.grain.filling..ZC91.",
     fln = "Final.leaf.number",
@@ -31,6 +34,6 @@ sqtranslate_colnames <- function(df) {
     yield = "Maturity.grain.yield")
 
   df %>%
-    rename_(.dots = dic[which(dic %in% colnames(df))]) %>%
+    dplyr::rename_(.dots = dic[which(dic %in% colnames(df))]) %>%
     return()
 }
