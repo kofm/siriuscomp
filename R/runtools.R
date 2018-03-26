@@ -1,5 +1,16 @@
+#' Optimise one genotype using the specified project/management(s) against one or more observations.
+#'
+#' @param sqconsole Path to SiriusQuality-Console.exe.
+#' @param project Path to Project file (can be relative).
+#' @param runitem Character string identifying the chosen RunItem.
+#' @param manag Character vector including all the chosen Management(s).
+#' @param variety Character string identifying the chosen Variety.
+#' @param parameters Character string indicating the parameters to be optimized.
+#' @param obsitem Character string identifying the chosen Observations Item.
+#' @param manag Character vector including all the chosen Observation(s) to optimise against.
+#' @return A data frame containing all the optimised combinations with value(s) of the fitness function(s)
 #' @export
-sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameters, ..., observations) {
+sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameters, ..., obsitem, observations) {
   # Get project path
   proj.wd <- normalizePath(dirname(project))
 
@@ -60,7 +71,7 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
   else stop("Usupported observation")
 
   obs.file <-
-    sqgetObsFile("tmp.sqpro", runitem, type)
+    sqgetObsFile(paste0(proj.wd,"/","tmp.sqpro"), obsitem, type)
 
   obs <- getObservations(obs.file, type)
 
@@ -76,13 +87,13 @@ sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameter
                sqconsole = sqconsole,
                proj.wd = proj.wd,
                ...)
-  res <- r$par %>% as_data_frame()
-  res <- bind_cols(res,as_data_frame(r$value))
-  res <- bind_cols(res,as_data_frame(r$pareto.optimal))
+  res <- r$par %>% dplyr::as_data_frame()
+  res <- dplyr::bind_cols(res,dplyr::as_data_frame(r$value))
+  res <- dplyr::bind_cols(res,dplyr::as_data_frame(r$pareto.optimal))
   colnames(res) <- c(parameters, "RMSE", "Optimal")
 
   res %>%
-    filter(Optimal == T) %>%
+    dplyr::filter(Optimal == T) %>%
     print()
 
   return(res)
@@ -129,7 +140,8 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
       sim %>%
       dplyr::left_join(obs.data, by = c("manag", "variety")) %>%
       dplyr::select(dplyr::starts_with(observations)) %>%
-      dplyr::mutate_all(as.numeric)
+      dplyr::mutate_all(as.numeric) %>%
+      na.omit()
 
     error <- r[,1] - r[,2]
 

@@ -46,6 +46,20 @@ sqgetRunItems <- function(sqrun) {
 }
 
 #' @export
+sqgetObsItems <- function(sqpro) {
+  xmlInternalTreeParse(sqpro) %>%
+    xpathApply(., "//ObservationFileName[text()]", xmlValue) %>%
+    .[[1]] %>%
+    gsub('\\\\', '/', .) %>%
+    tools::file_path_as_absolute() %>%
+    xmlInternalTreeParse() %>%
+    xpathApply(., paste0("//ObservationItem[@name]"), xmlAttrs) %>%
+    unlist %>%
+    unique %>%
+    return
+}
+
+#' @export
 sqgetRunManag <- function(sqrun, runitem) {
   xmlInternalTreeParse(sqrun) %>%
     xpathApply(.,paste0("//RunItem[@name='", runitem,"']/Multi/MultiRunsArray/MultiRunItem/ManagementItem/text()"), xmlValue) %>%
