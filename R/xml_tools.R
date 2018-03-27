@@ -1,14 +1,3 @@
-#' Edit .sqvar or .sqpar XML files
-#'
-#' This function returns a XML .sqvar or .sqpar file
-#' with the specified parameter changed for a variety/specie
-#' with the provided value
-#'
-#' @param node Object of class "XMLInternalDocument" or "XMLAbstractDocument" obtained from sqpar or sqvar file
-#' @param varspecie The name of the target specie/variety
-#' @param parameter The name of the parameter to change
-#' @param value Value to set the parameter
-#' @return Changed XML tree
 #' @import XML
 #' @export
 sqeditParam <- function(node, varspecie = NULL, parameter, value) {
@@ -36,26 +25,66 @@ sqeditParam <- function(node, varspecie = NULL, parameter, value) {
   }
 }
 
+#' Edit .sqvar or .sqpar XML files
+#'
+#' This function change the specified parameter in a XML .sqvar or .sqpar file
+#' for a specific variety/specie
+#'
+#' @param file A valid .sqvar or .sqpar Sirius Quality file.
+#' @param varspecie The name of the target specie/variety.
+#' @param parameter The name of the parameter to change.
+#' @param value Value to set the parameter.
+#' @return The name of the edited file.
+#' @import XML
+#' @export
+sqchangeParam <- function(file, varspecie, parameter, value) {
+  node <- xmlInternalTreeParse(file)
+  sqeditParam(node, varspecie = varspecie, parameter = parameter, value = value)
+  saveXML(node, file)
+}
+
+#' @export
+sqgetVarSpecie <- function(file) {
+	xmlInternalTreeParse(file) %>%
+	xpathApply("//CropParameterItem", xmlAttrs) %>%
+	unlist %>%
+	unname %>%
+	return
+}
+
+#' Duplicate an existing variety/specie in XML files
+#'
+#' This function duplicates an existing variety/specie with a new name in the supplied .sqvar/.sqpar file
+#'
+#' @param file Target .sqpar or .sqvar file
+#' @param varspecie Variety/Specie to duplicate
+#' @param new Name of the new Variety/Specie
+#' @export
+#' @import XML
+sqduplVariety <- function(file, varspecie, new) {
+
+  doc <- xmlParse(file)
+  node <- xpathApply(doc, paste0("//CropParameterItem[@name = '", varspecie,"']"), xmlClone)
+  xmlAttrs(node[[1]]) <- c(name = new)
+  xpathApply(doc, "//ItemsArray", addChildren, node)
+  saveXML(doc, file)
+
+}
+
+####################################### RUN FILES #######################################
+#' Get all the run items in Run File
+#'
+#' Funciton to retrieve all the Run Items present in the specified Sirius Quality Run file (.sqrun)
+#'
+#' @param sqrun Target .sqrun file
+#' @return A character vector containing all the present Run Items
+#' @import XML
 #' @export
 sqgetRunItems <- function(sqrun) {
   xmlInternalTreeParse(sqrun) %>%
     xpathApply(.,"//RunItem[@name]", xmlAttrs) %>%
     unlist %>%
     unname %>%
-    return
-}
-
-#' @export
-sqgetObsItems <- function(sqpro) {
-  xmlInternalTreeParse(sqpro) %>%
-    xpathApply(., "//ObservationFileName[text()]", xmlValue) %>%
-    .[[1]] %>%
-    gsub('\\\\', '/', .) %>%
-    tools::file_path_as_absolute() %>%
-    xmlInternalTreeParse() %>%
-    xpathApply(., paste0("//ObservationItem[@name]"), xmlAttrs) %>%
-    unlist %>%
-    unique %>%
     return
 }
 
@@ -68,11 +97,25 @@ sqgetRunManag <- function(sqrun, runitem) {
     return
 }
 
+#' Get all the Observations Items in the observation file
+#'
+#' Function to retrieve all the Observations Items present in the Observation File
+#'
+#' @param sqpro Target Project file (.sqpro)
+#' @return A character vector containing all the present Observations Items
+#' @import XML
 #' @export
-sqchangeParam <- function(file, varspecie, parameter, value) {
-  node <- xmlInternalTreeParse(file)
-  sqeditParam(node, varspecie = varspecie, parameter = parameter, value = value)
-  saveXML(node, file)
+sqgetObsItems <- function(sqpro) {
+  xmlInternalTreeParse(sqpro) %>%
+    xpathApply(., "//ObservationFileName[text()]", xmlValue) %>%
+    .[[1]] %>%
+    gsub('\\\\', '/', .) %>%
+    tools::file_path_as_absolute() %>%
+    xmlInternalTreeParse() %>%
+    xpathApply(., paste0("//ObservationItem[@name]"), xmlAttrs) %>%
+    unlist %>%
+    unique %>%
+    return
 }
 
 #' @export
@@ -96,4 +139,22 @@ sqgetObsFile <- function(sqpro, runitem, type) {
   return(obs.file)
 }
 
+#' @export
+sqaddMultiRunItem <- function(sqrun, runitem, management, parameter, option, site, soil, variety, experiment) {
+
+  doc <- XML::xmlParse(sqrun)
+
+  new <- XML::addChildren(XML::newXMLNode("MultiRunItem"),
+                          XML::newXMLNode("ManagementItem", management),
+                          XML::newXMLNode("ParameterItem", parameter),
+                          XML::newXMLNode("RunOptionItem", option),
+                          XML::newXMLNode("SiteItem", site),
+                          XML::newXMLNode("SoilItem", soil),
+                          XML::newXMLNode("VarietyItem", variety),
+                          XML::newXMLNode("ExperimentItem", experiment))
+
+  XML::xpathApply(doc, paste0("//RunItem[@name='", runitem,"']/Multi/MultiRunsArray"), XML::addChildren, new)
+
+  XML::saveXML(doc, file = sqrun)
+}
 
