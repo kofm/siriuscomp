@@ -3,14 +3,14 @@
 #' @param sqconsole Path to SiriusQuality-Console.exe.
 #' @param project Path to Project file (can be relative).
 #' @param runitem Character string identifying the chosen RunItem.
-#' @param manag Character vector including all the chosen Management(s).
-#' @param variety Character string identifying the chosen Variety.
+#' @param mng Character vector including all the chosen Management(s).
+#' @param var Character string identifying the chosen Variety.
 #' @param parameters Character string indicating the parameters to be optimized.
 #' @param obsitem Character string identifying the chosen Observations Item.
-#' @param manag Character vector including all the chosen Observation(s) to optimise against.
+#' @param observation Character vector including all the chosen Observation(s) to optimise against.
 #' @return A data frame containing all the optimised combinations with value(s) of the fitness function(s)
 #' @export
-sqOptimiseVar <- function(sqconsole, project, runitem, manag, variety, parameters, ..., obsitem, observations) {
+sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ..., obsitem, observations) {
   # Get project path
   proj.wd <- normalizePath(dirname(project))
 
@@ -149,7 +149,6 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
 
     print(fitness)
     return(fitness)
-
 }
 
 #' @export

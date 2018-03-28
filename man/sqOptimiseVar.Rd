@@ -4,8 +4,8 @@
 \alias{sqOptimiseVar}
 \title{Optimise one genotype using the specified project/management(s) against one or more observations.}
 \usage{
-sqOptimiseVar(sqconsole, project, runitem, manag, variety, parameters, ...,
-  obsitem, observations)
+sqOptimiseVar(sqconsole, project, runitem, mng, var, parameters, ..., obsitem,
+  observations)
 }
 \arguments{
 \item{sqconsole}{Path to SiriusQuality-Console.exe.}
@@ -14,15 +14,15 @@ sqOptimiseVar(sqconsole, project, runitem, manag, variety, parameters, ...,
 
 \item{runitem}{Character string identifying the chosen RunItem.}
 
-\item{manag}{Character vector including all the chosen Management(s).}
+\item{mng}{Character vector including all the chosen Management(s).}
 
-\item{variety}{Character string identifying the chosen Variety.}
+\item{var}{Character string identifying the chosen Variety.}
 
 \item{parameters}{Character string indicating the parameters to be optimized.}
 
 \item{obsitem}{Character string identifying the chosen Observations Item.}
 
-\item{manag}{Character vector including all the chosen Observation(s) to optimise against.}
+\item{observation}{Character vector including all the chosen Observation(s) to optimise against.}
 }
 \value{
 A data frame containing all the optimised combinations with value(s) of the fitness function(s)

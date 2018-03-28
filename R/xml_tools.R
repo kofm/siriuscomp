@@ -89,12 +89,24 @@ sqgetRunItems <- function(sqrun) {
 }
 
 #' @export
-sqgetRunManag <- function(sqrun, runitem) {
+sqgetRunManag <- function(sqrun, runitem, variety = NULL) {
+  if (is.null(variety)) {
   xmlInternalTreeParse(sqrun) %>%
     xpathApply(.,paste0("//RunItem[@name='", runitem,"']/Multi/MultiRunsArray/MultiRunItem/ManagementItem/text()"), xmlValue) %>%
     unlist %>%
     unique %>%
     return
+  } else {
+    xmlInternalTreeParse(sqrun) %>%
+      xpathApply(.,paste0("//RunItem[@name='",
+                          runitem,
+                          "']/Multi/MultiRunsArray/MultiRunItem/VarietyItem[text()='",
+                          variety,
+                          "']/../ManagementItem/text()"), xmlValue) %>%
+      unlist %>%
+      unique %>%
+      return
+  }
 }
 
 #' Get all the Observations Items in the observation file
@@ -144,16 +156,20 @@ sqaddMultiRunItem <- function(sqrun, runitem, management, parameter, option, sit
 
   doc <- XML::xmlParse(sqrun)
 
-  new <- XML::addChildren(XML::newXMLNode("MultiRunItem"),
-                          XML::newXMLNode("ManagementItem", management),
-                          XML::newXMLNode("ParameterItem", parameter),
-                          XML::newXMLNode("RunOptionItem", option),
-                          XML::newXMLNode("SiteItem", site),
-                          XML::newXMLNode("SoilItem", soil),
-                          XML::newXMLNode("VarietyItem", variety),
-                          XML::newXMLNode("ExperimentItem", experiment))
-
-  XML::xpathApply(doc, paste0("//RunItem[@name='", runitem,"']/Multi/MultiRunsArray"), XML::addChildren, new)
+    for (i in 1:length(management)) {
+      new <- XML::addChildren(XML::newXMLNode("MultiRunItem"),
+                              XML::newXMLNode("ManagementItem", management[i]),
+                              XML::newXMLNode("ParameterItem", parameter),
+                              XML::newXMLNode("RunOptionItem", option),
+                              XML::newXMLNode("SiteItem", site),
+                              XML::newXMLNode("SoilItem", soil),
+                              XML::newXMLNode("VarietyItem", variety),
+                              XML::newXMLNode("ExperimentItem", experiment))
+      XML::xpathApply(doc,
+                      paste0("//RunItem[@name='", runitem,"']/Multi/MultiRunsArray"),
+                      XML::addChildren,
+                      new)
+    }
 
   XML::saveXML(doc, file = sqrun)
 }
