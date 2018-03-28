@@ -1,6 +1,6 @@
 #' @export
 getSimulation <- function(path, type) {
-  if (type == "sum")
+  if (type == "seasonal")
     {
     sum <-
       read.table(path,

@@ -30,25 +30,25 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
   # Management(s)
   sqrun.tree <- xmlParse(paste0(proj.wd,"/",paths$RunFileName))
   xpathApply(sqrun.tree, paste0("//RunItem[@name!='", runitem,"']"),removeNodes)
-  if (length(manag) > 1) {
-    for (i in 1:length(manag)) {
+  if (length(mng) > 1) {
+    for (i in 1:length(mng)) {
       if (i == 1)
-        xpath <- paste0("//ManagementItem[text()!='", manag[i],"'")
+        xpath <- paste0("//ManagementItem[text()!='", mng[i],"'")
       else
-        xpath <- paste0(xpath," and text()!='", manag[i],"'")
+        xpath <- paste0(xpath," and text()!='", mng[i],"'")
     }
     xpath <- paste0(xpath,"]/..")
   } else
-    xpath <- paste0("//ManagementItem[text()!='", manag,"']/..")
+    xpath <- paste0("//ManagementItem[text()!='", mng,"']/..")
   xpathApply(sqrun.tree, xpath,removeNodes)
   #Variety
-  xpathApply(sqrun.tree,paste0("//MultiRunItem/VarietyItem[text()!='", variety,"']/.."), removeNodes)
+  xpathApply(sqrun.tree,paste0("//MultiRunItem/VarietyItem[text()!='", var,"']/.."), removeNodes)
   #Save temoprary Run file
   saveXML(sqrun.tree, file = paste0(proj.wd,"/","tmp.sqrun"))
 
   # Remove unused varieties from varieties parameters
   sqvar.tree <- xmlParse(paste0(proj.wd,"/", paths$VarietyFileName))
-  xpathApply(sqvar.tree,paste0("//CropParameterItem[@name!='", variety,"']"), removeNodes)
+  xpathApply(sqvar.tree,paste0("//CropParameterItem[@name!='", var,"']"), removeNodes)
   saveXML(sqvar.tree, file = paste0(proj.wd,"/","tmp.sqvar"))
 
   # Change sqrun file with temporary file
@@ -66,16 +66,33 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
   # Save all in temoprary Project file
   saveXML(sqpro.tree, file = paste0(proj.wd,"/","tmp.sqpro"))
 
-  if (observations %in% c("daysto_anth", "fln")) type <- "sqmat"
-  else if (observations %in% c("eln")) type <- "sqoln"
-  else stop("Usupported observation")
+  first_item <- FALSE
 
-  obs.file <-
-    sqgetObsFile(paste0(proj.wd,"/","tmp.sqpro"), obsitem, type)
+  for (observation in observations) {
 
-  obs <- getObservations(obs.file, type)
+    if (observation %in% c("daysto_anth", "fln")) {
+      type <- "sqmat" } else if (observations %in% c("eln")) {
+        type <- "sqoln" } else {
+          stop("Usupported observati on")
+        }
 
-  if (!observations %in% colnames(obs)) stop(paste0("Observations not present in file: ", observations))
+    obs.file <-
+      sqgetObsFile(paste0(proj.wd,"/","tmp.sqpro"), obsitem, type)
+
+    obs <-
+      getObservations(obs.file, type) %>% dplyr::filter(variety == var & manag %in% mng) %>%
+      dplyr::select_("manag", "site", "sow", observation)
+
+    if (!observation %in% colnames(obs)) stop(paste0("Observations not present in file: ", observation))
+
+    if (!first_item) {
+      obs.data <- obs
+    } else {
+      obs.data <- obs.data %>% dplyr::left_join(obs)
+    }
+
+    first_item <- TRUE
+  }
 
   r <-
     mco::nsga2(fn = sqrunOpt,
@@ -83,20 +100,21 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
                odim = length(observations),
                parameters = parameters,
                observations = observations,
-               obs.data = obs,
+               obs.data = obs.data,
                sqconsole = sqconsole,
                proj.wd = proj.wd,
                ...)
-  res <- r$par %>% dplyr::as_data_frame()
-  res <- dplyr::bind_cols(res,dplyr::as_data_frame(r$value))
-  res <- dplyr::bind_cols(res,dplyr::as_data_frame(r$pareto.optimal))
-  colnames(res) <- c(parameters, "RMSE", "Optimal")
-
-  res %>%
-    dplyr::filter(Optimal == T) %>%
-    print()
-
-  return(res)
+  # res <- r$par %>% dplyr::as_data_frame()
+  # res <- dplyr::bind_cols(res,dplyr::as_data_frame(r$value))
+  # res <- dplyr::bind_cols(res,dplyr::as_data_frame(r$pareto.optimal))
+  # colnames(res) <- c(parameters, "RMSE", "Optimal")
+  #
+  # res %>%
+  #   dplyr::filter(Optimal == T) %>%
+  #   print()
+  #
+  # return(res)
+  return(r)
 }
 
 #' @export
@@ -132,21 +150,29 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
     runSQ(sqconsole, paste0(proj.wd, "/tmp.sqpro"))
 
     # Get simulation results
-    if (observations %in% c("daysto_anth", "fln")) sim <- getSimulation(out.file, type = "sum")
-    else if (observations %in% c("eln")) sim <- getSimulation(dirname(out.file), type = "daily")
-    else stop("Unsupported observation")
+    fitness <- vector()
 
-    r <-
-      sim %>%
-      dplyr::left_join(obs.data, by = c("manag", "variety")) %>%
-      dplyr::select(dplyr::starts_with(observations)) %>%
-      dplyr::mutate_all(as.numeric) %>%
-      na.omit()
+    for (observation in observations) {
 
-    error <- r[,1] - r[,2]
+      if (observation %in% c("daysto_anth", "fln")) sim <- getSimulation(out.file, type = "seasonal")
+      else if (observations %in% c("eln")) sim <- getSimulation(dirname(out.file), type = "daily")
+      else stop("Unsupported observation")
 
-    fitness <- sqrt(mean(error^2))
 
+      r <-
+        sim %>%
+        dplyr::left_join(obs.data, by = c("manag", "sow")) %>%
+        dplyr::select(dplyr::starts_with(observation)) %>%
+        dplyr::mutate_all(as.numeric) %>%
+        na.omit()
+
+      error <- r[,1] - r[,2]
+
+      rmse <- sqrt(mean(error^2))
+
+
+      fitness <- append(fitness, rmse)
+    }
     print(fitness)
     return(fitness)
 }
