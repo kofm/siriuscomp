@@ -22,14 +22,16 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
     xmlToList(sqpro.tree) %>%
     .$Inputs
 
-  # Remove unused runitem/management(s)/variety from run file
+  #### Remove unused runitem/management(s)/variety from run file ###
+  # Needed to speed up run time
+
+  # Get the XML tree of Run File (.sqrun)
   sqrun.tree <- xmlParse(paste0(proj.wd,"/",paths$RunFileName))
-  # Runitem
+
+  # Remove unused RunItems
   xpathApply(sqrun.tree, paste0("//RunItem[@name!='", runitem,"']"),removeNodes)
 
-  # Management(s)
-  sqrun.tree <- xmlParse(paste0(proj.wd,"/",paths$RunFileName))
-  xpathApply(sqrun.tree, paste0("//RunItem[@name!='", runitem,"']"),removeNodes)
+  # Remove unused Managements
   if (length(mng) > 1) {
     for (i in 1:length(mng)) {
       if (i == 1)
@@ -41,31 +43,35 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
   } else
     xpath <- paste0("//ManagementItem[text()!='", mng,"']/..")
   xpathApply(sqrun.tree, xpath,removeNodes)
-  #Variety
+
+  # Remove unused varieties
   xpathApply(sqrun.tree,paste0("//MultiRunItem/VarietyItem[text()!='", var,"']/.."), removeNodes)
-  #Save temoprary Run file
+
+  # Save the modified XML tree as temporary Run File (tmp.sqrun)
   saveXML(sqrun.tree, file = paste0(proj.wd,"/","tmp.sqrun"))
 
-  # Remove unused varieties from varieties parameters
+  ### Create a temporary .sqvar file ###
+  # Retrieve the XML tree from Variety File (.sqvar)
   sqvar.tree <- xmlParse(paste0(proj.wd,"/", paths$VarietyFileName))
   xpathApply(sqvar.tree,paste0("//CropParameterItem[@name!='", var,"']"), removeNodes)
   saveXML(sqvar.tree, file = paste0(proj.wd,"/","tmp.sqvar"))
 
-  # Change sqrun file with temporary file
+  # Edit Project File to reference the temporary Run File (tmp.sqrun)
   xpathSApply(sqpro.tree,
               "//RunFileName",
               `xmlValue<-`,
               value = "tmp.sqrun")
 
-  # Change sqvar file with temporary file
+  # Edit Project File to reference the temporary Variety File (tmp.sqvar)
   xpathSApply(sqpro.tree,
               "//VarietyFileName",
               `xmlValue<-`,
               value = "tmp.sqvar")
 
-  # Save all in temoprary Project file
+  # Save edited XML node in a temporary Project File (tmp.sqpro)
   saveXML(sqpro.tree, file = paste0(proj.wd,"/","tmp.sqpro"))
 
+  # Set a state variable for next loop
   first_item <- FALSE
 
   for (observation in observations) {
@@ -124,9 +130,6 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
     if (length(values) != length(parameters)) {
       stop("Input dimensions different from supplied parameters.")
     }
-
-    # Get working directory from project file
-    # proj.wd <- normalizePath(dirname(projdir))
 
     # Get output file
     sqrun.tree <- xmlInternalTreeParse(paste0(proj.wd,"/tmp.sqrun"))
