@@ -11,6 +11,11 @@
 #' @return A data frame containing all the optimised combinations with value(s) of the fitness function(s)
 #' @export
 sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ..., obsitem, observations) {
+
+  # List of Observation Files with corresponding type. TODO * Should be a package constant/option? *
+  obs.data <- list(PhenologyObservationFile = "sqmat",
+                   HaunIndexObservationFile = "sqoln")
+
   # Get project path
   proj.wd <- normalizePath(dirname(project))
 
@@ -72,32 +77,70 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
   saveXML(sqpro.tree, file = paste0(proj.wd,"/","tmp.sqpro"))
 
   # Set a state variable for next loop
-  first_item <- FALSE
+  # first_item <- FALSE
+  #
+  # for (observation in observations) {
+  #
+  #   if (observation %in% c("daysto_anth", "fln")) {
+  #     type <- "sqmat" } else if (observations %in% c("eln")) {
+  #       type <- "sqoln" } else {
+  #         stop("Usupported observati on")
+  #       }
+  #
+  #   obs.file <-
+  #     sqgetObsFile(paste0(proj.wd,"/","tmp.sqpro"), obsitem, type)
+  #
+  #   obs <-
+  #     getObservations(obs.file, type) %>% dplyr::filter(variety == var & manag %in% mng) %>%
+  #     dplyr::select_("manag", "site", "sow", observation)
+  #
+  #   if (!observation %in% colnames(obs)) stop(paste0("Observations not present in file: ", observation))
+  #
+  #   if (!first_item) {
+  #     obs.data <- obs
+  #   } else {
+  #     obs.data <- obs.data %>% dplyr::left_join(obs)
+  #   }
+  #
+  #   first_item <- TRUE
+  # }
 
-  for (observation in observations) {
+  ### Loading all the observation data files ###
 
-    if (observation %in% c("daysto_anth", "fln")) {
-      type <- "sqmat" } else if (observations %in% c("eln")) {
-        type <- "sqoln" } else {
-          stop("Usupported observati on")
-        }
+  # Get the path to the .sqobs Observation File
+  obs.file <-
+    paths$ObservationFileName %>%
+    gsub('\\\\', '/', .) %>%
+    tools::file_path_as_absolute()
 
-    obs.file <-
-      sqgetObsFile(paste0(proj.wd,"/","tmp.sqpro"), obsitem, type)
+  # Create a list of the available Observation Data Files, for the desidered Observation Item
+  list <- xmlInternalTreeParse(obs.file) %>%
+    xpathApply(., paste0("//ObservationItem[@name='", obsitem,"']"), xmlToList) %>%
+    .[[1]]
 
-    obs <-
-      getObservations(obs.file, type) %>% dplyr::filter(variety == var & manag %in% mng) %>%
-      dplyr::select_("manag", "site", "sow", observation)
+  # Remove unused items
+  list <- list[grep("*File", names(list))]
+  list[list == "?"] <- NULL
 
-    if (!observation %in% colnames(obs)) stop(paste0("Observations not present in file: ", observation))
+  # For each Observation Data File load the data in R objects named obs.sqmat, obs.sqoln, etc.
+  for (file in names(list)) {
+    assign(paste0("obs.",obs.data[[file]]),
+           getObservations(gsub('\\\\', '/',list[file]), type = obs.data[file]))
+  }
 
-    if (!first_item) {
-      obs.data <- obs
-    } else {
-      obs.data <- obs.data %>% dplyr::left_join(obs)
-    }
+  observed <- list()
 
-    first_item <- TRUE
+  for (obs in observations) {
+
+    o <-
+      locateObservationData(obs) %>%
+      get() %>%
+      dplyr::filter(variety == var & manag %in% mng) %>%
+      dplyr::arrange(sow) %>%
+      dplyr::pull(obs) %>%
+      as.numeric
+
+    observed[[obs]] <- o
   }
 
   r <-
@@ -106,7 +149,7 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
                odim = length(observations),
                parameters = parameters,
                observations = observations,
-               obs.data = obs.data,
+               obs.data = observed,
                sqconsole = sqconsole,
                proj.wd = proj.wd,
                ...)
@@ -133,10 +176,11 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
 
     # Get output file
     sqrun.tree <- xmlInternalTreeParse(paste0(proj.wd,"/tmp.sqrun"))
-    out.file <- normalizePath(paste0(xpathApply(sqrun.tree, "//Multi/OutputDirectory",xmlValue),"/",
-                                     xpathApply(sqrun.tree, "//Multi/OutputPattern",xmlValue),".sqbrs"))
+    out.file <- normalizePath(gsub('\\\\', '/', paste0(xpathApply(sqrun.tree, "//Multi/OutputDirectory",xmlValue),"/",
+                                                     xpathApply(sqrun.tree, "//Multi/OutputPattern",xmlValue),".sqbrs")))
 
-    #### Edit tmp.sqvarsu file
+    ### Edit tmp.sqvar file with new parameter(s) value(s) ###
+
     # Load tmp.sqvar
     sqvar.tree <- xmlParse(paste0(proj.wd,"/tmp.sqvar"))
 
@@ -153,27 +197,24 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
     runSQ(sqconsole, paste0(proj.wd, "/tmp.sqpro"))
 
     # Get simulation results
+    predicted <- list()
     fitness <- vector()
 
-    for (observation in observations) {
+    for (obs in observations) {
+      p <-
+        getSimulation(out.file, type = "seasonal") %>%
+        # dplyr::filter(variety == var & manag %in% mng) %>% - Not needed (tmp.sqrun)
+        dplyr::arrange(sow) %>%
+        dplyr::pull(obs) %>%
+        as.numeric
 
-      if (observation %in% c("daysto_anth", "fln")) sim <- getSimulation(out.file, type = "seasonal")
-      else if (observations %in% c("eln")) sim <- getSimulation(dirname(out.file), type = "daily")
-      else stop("Unsupported observation")
 
+      if (length(p) != length(obs.data[[obs]])) {
+        stop("Not all the specified management are present in the observation file")
+      }
 
-      r <-
-        sim %>%
-        dplyr::left_join(obs.data, by = c("manag", "sow")) %>%
-        dplyr::select(dplyr::starts_with(observation)) %>%
-        dplyr::mutate_all(as.numeric) %>%
-        na.omit()
-
-      error <- r[,1] - r[,2]
-
+      error <- obs.data[[obs]] - p
       rmse <- sqrt(mean(error^2))
-
-
       fitness <- append(fitness, rmse)
     }
     print(fitness)

@@ -82,3 +82,11 @@ sqobsdaily_importer <- function(path) {
   }
   return(dailyout)
 }
+
+#' @export
+locateObservationData <- function(observation) {
+  param_location <- list(daysto_anth = "sqmat",
+                         fln = "sqmat")
+
+  return(paste0("obs.",param_location[[observation]]))
+}
