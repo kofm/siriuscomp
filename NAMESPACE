@@ -3,6 +3,7 @@
 export(getObservations)
 export(getSimulation)
 export(locateObservationData)
+export(locatePredictionData)
 export(runSQ)
 export(sqOptimiseVar)
 export(sqaddMultiRunItem)

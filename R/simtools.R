@@ -17,16 +17,16 @@ getSimulation <- function(path, type) {
     return(sum)
 
   } else if (type == "daily") {
-    files <- list.files(path = path, pattern = "\\.sqsro$", recursive = F)
+    files <- list.files(path = dirname(path), pattern = "\\.sqsro$", recursive = F)
 
     first_file <- TRUE
 
     for (file in files) {
-
+      # print(file)
       filename <- gsub(".sqsro","",file)
 
       dat <-
-          read.table(paste0(path,"/",file),
+          read.table(paste0(dirname(path),"/",file),
                      sep = "\t",
                      fileEncoding = "utf-16",
                      skip = 6,
@@ -49,4 +49,13 @@ getSimulation <- function(path, type) {
   } else {
       stop("Invalid output file type")
     }
+}
+
+#' @export
+locatePredictionData <- function(variable) {
+  param_location <- list(daysto_anth = "seasonal",
+                         fln = "seasonal",
+                         eln = "daily")
+
+  return(param_location[[variable]])
 }

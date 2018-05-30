@@ -9,7 +9,7 @@ getObservations <- function(file, type = NULL) {
     sqobs_importer(file) %>%
       dplyr::mutate(daysto_anth = as.integer(as.Date(anthesis) - as.Date(sow)))
 
-  } else if (type == "sqoln") {
+  } else if (type == "sqoln" | type == "sqcan") {
 
     obs <-
       sqobs_importer(file)
@@ -86,7 +86,8 @@ sqobsdaily_importer <- function(path) {
 #' @export
 locateObservationData <- function(observation) {
   param_location <- list(daysto_anth = "sqmat",
-                         fln = "sqmat")
+                         fln = "sqmat",
+                         eln = "sqoln")
 
   return(paste0("obs.",param_location[[observation]]))
 }

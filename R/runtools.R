@@ -14,7 +14,8 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
 
   # List of Observation Files with corresponding type. TODO * Should be a package constant/option? *
   obs.data <- list(PhenologyObservationFile = "sqmat",
-                   HaunIndexObservationFile = "sqoln")
+                   HaunIndexObservationFile = "sqoln",
+                   CanopyObservationFile = "sqcan")
 
   # Get project path
   proj.wd <- normalizePath(dirname(project))
@@ -76,35 +77,6 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
   # Save edited XML node in a temporary Project File (tmp.sqpro)
   saveXML(sqpro.tree, file = paste0(proj.wd,"/","tmp.sqpro"))
 
-  # Set a state variable for next loop
-  # first_item <- FALSE
-  #
-  # for (observation in observations) {
-  #
-  #   if (observation %in% c("daysto_anth", "fln")) {
-  #     type <- "sqmat" } else if (observations %in% c("eln")) {
-  #       type <- "sqoln" } else {
-  #         stop("Usupported observati on")
-  #       }
-  #
-  #   obs.file <-
-  #     sqgetObsFile(paste0(proj.wd,"/","tmp.sqpro"), obsitem, type)
-  #
-  #   obs <-
-  #     getObservations(obs.file, type) %>% dplyr::filter(variety == var & manag %in% mng) %>%
-  #     dplyr::select_("manag", "site", "sow", observation)
-  #
-  #   if (!observation %in% colnames(obs)) stop(paste0("Observations not present in file: ", observation))
-  #
-  #   if (!first_item) {
-  #     obs.data <- obs
-  #   } else {
-  #     obs.data <- obs.data %>% dplyr::left_join(obs)
-  #   }
-  #
-  #   first_item <- TRUE
-  # }
-
   ### Loading all the observation data files ###
 
   # Get the path to the .sqobs Observation File
@@ -124,6 +96,7 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
 
   # For each Observation Data File load the data in R objects named obs.sqmat, obs.sqoln, etc.
   for (file in names(list)) {
+    print(file)
     assign(paste0("obs.",obs.data[[file]]),
            getObservations(gsub('\\\\', '/',list[file]), type = obs.data[file]))
   }
@@ -131,14 +104,26 @@ sqOptimiseVar <- function(sqconsole, project, runitem, mng, var, parameters, ...
   observed <- list()
 
   for (obs in observations) {
+    data <- locateObservationData(obs)
+    print(data)
 
+    if (data %in% c("obs.sqmat"))
+      {
     o <-
-      locateObservationData(obs) %>%
+      data %>%
       get() %>%
       dplyr::filter(variety == var & manag %in% mng) %>%
       dplyr::arrange(sow) %>%
       dplyr::pull(obs) %>%
       as.numeric
+    } else {
+      o <-
+        data %>%
+        get() %>%
+        dplyr::filter(variety == var & manag %in% mng) %>%
+        dplyr::arrange(manag, Date) %>%
+        dplyr::select(Date, obs)
+    }
 
     observed[[obs]] <- o
   }
@@ -201,21 +186,39 @@ sqrunOpt <- function(values, parameters, observations, obs.data, sqconsole, proj
     fitness <- vector()
 
     for (obs in observations) {
-      p <-
-        getSimulation(out.file, type = "seasonal") %>%
-        # dplyr::filter(variety == var & manag %in% mng) %>% - Not needed (tmp.sqrun)
-        dplyr::arrange(sow) %>%
-        dplyr::pull(obs) %>%
-        as.numeric
 
+      type <- locatePredictionData(obs)
+      if (type == "seasonal") {
+        p <-
+          getSimulation(out.file, type) %>%
+          # dplyr::filter(variety == var & manag %in% mng) %>% - Not needed (tmp.sqrun)
+          dplyr::arrange(sow) %>%
+          dplyr::pull(obs) %>%
+          as.numeric
 
-      if (length(p) != length(obs.data[[obs]])) {
-        stop("Not all the specified management are present in the observation file")
+        if (length(p) != length(obs.data[[obs]])) {
+          stop("Not all the specified management are present in the observation file")
+        }
+
+        error <- obs.data[[obs]] - p
+        rmse <- sqrt(mean(error^2))
+        fitness <- append(fitness, rmse)
+      } else {
+
+        data <-
+          getSimulation(out.file, type) %>%
+          dplyr::filter(as.Date(Date..yyyy.mm.dd.) %in% as.Date(obs.data[[obs]]$Date)) %>%
+          dplyr::arrange(manag, Date..yyyy.mm.dd.) %>%
+          dplyr::select(Date..yyyy.mm.dd., obs) %>%
+          dplyr::left_join(obs.data[[obs]], by = c("Date..yyyy.mm.dd." = "Date")) %>%
+          dplyr::select(dplyr::starts_with(obs)) %>%
+          dplyr::mutate_all(as.numeric)
+
+        error <- data[, 2] - data[, 1]
+        rmse <- sqrt(mean(error^2))
+        fitness <- append(fitness, rmse)
       }
 
-      error <- obs.data[[obs]] - p
-      rmse <- sqrt(mean(error^2))
-      fitness <- append(fitness, rmse)
     }
     print(fitness)
     return(fitness)
